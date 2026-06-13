@@ -30,6 +30,20 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zephyr/input/input.h>
 #endif
 
+#if IS_ENABLED(CONFIG_ZMK_SLEEP)
+#if IS_ENABLED(CONFIG_ZMK_STUDIO)
+#include <zmk/studio/core.h>
+#endif
+
+static bool studio_session_active(void) {
+#if IS_ENABLED(CONFIG_ZMK_STUDIO)
+    return zmk_studio_is_active();
+#else
+    return false;
+#endif
+}
+#endif /* IS_ENABLED(CONFIG_ZMK_SLEEP) */
+
 bool is_usb_power_present(void) {
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
     return zmk_usb_is_powered();
@@ -75,7 +89,10 @@ void activity_work_handler(struct k_work *work) {
     int32_t current = k_uptime_get();
     int32_t inactive_time = current - activity_last_uptime;
 #if IS_ENABLED(CONFIG_ZMK_SLEEP)
-    if (inactive_time > MAX_SLEEP_MS && !is_usb_power_present()) {
+    // Never deep sleep while a ZMK Studio session is connected: waking the
+    // central from SYSTEMOFF after sleeping mid-session is unreliable, so keep
+    // the keyboard awake until the session ends (then normal sleep resumes).
+    if (inactive_time > MAX_SLEEP_MS && !is_usb_power_present() && !studio_session_active()) {
         // Put devices in suspend power mode before sleeping
         set_state(ZMK_ACTIVITY_SLEEP);
 

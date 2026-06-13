@@ -15,6 +15,7 @@
 #include <zmk/ble.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/ble_active_profile_changed.h>
+#include <zmk/studio/core.h>
 #include <zmk/studio/rpc.h>
 
 #include "uuid.h"
@@ -33,6 +34,11 @@ static void rpc_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
     bool notif_enabled = (value == BT_GATT_CCC_INDICATE);
 
     LOG_INF("RPC Notifications %s", notif_enabled ? "enabled" : "disabled");
+
+    // Track Studio-over-BLE connection so deep sleep can be inhibited while a
+    // session is active. The CCC resets (this fires with notif disabled) on
+    // disconnect, so the flag self-clears and sleep resumes normally.
+    zmk_studio_set_active(notif_enabled);
 
 #if CONFIG_ZMK_STUDIO_TRANSPORT_BLE_PREF_LATENCY < CONFIG_BT_PERIPHERAL_PREF_LATENCY
     struct bt_conn *conn = zmk_ble_active_profile_conn();

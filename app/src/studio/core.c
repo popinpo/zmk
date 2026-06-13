@@ -4,9 +4,17 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <zephyr/sys/atomic.h>
+
 #include <zmk/studio/core.h>
 
 ZMK_EVENT_IMPL(zmk_studio_core_lock_state_changed);
+
+static atomic_t studio_active = ATOMIC_INIT(0);
+
+bool zmk_studio_is_active(void) { return atomic_get(&studio_active) != 0; }
+
+void zmk_studio_set_active(bool active) { atomic_set(&studio_active, active ? 1 : 0); }
 
 static enum zmk_studio_core_lock_state state = IS_ENABLED(CONFIG_ZMK_STUDIO_LOCKING)
                                                    ? ZMK_STUDIO_CORE_LOCK_STATE_LOCKED
